@@ -1,66 +1,67 @@
 import React, { useState, useRef } from 'react';
 import './home.css';
-import { getCdpInfo } from '../contractComunication/maker';
+import { CdpInfo, getCdpInfo } from '../contractComunication/maker';
 import { bytesToString } from '../utils/bytesToString';
-
+import { Buffer } from 'Buffer';
+import pLimit from 'p-limit';
 
 const Home: React.FC = () => {
   const [selectedCollateral, setSelectedCollateral] = useState<string>('ETH-A');
   const [roughCdpId, setRoughCdpId] = useState<number | null>(null);
+  const [cdpResults, setCdpResults] = useState<CdpInfo[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
   const roughCdpIdInputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    setCdpResults([]);
+    setLoading(true);
 
     const enteredCdpId = roughCdpIdInputRef.current ? parseInt(roughCdpIdInputRef.current.value, 10) : null;
     setRoughCdpId(enteredCdpId);
 
-    console.log('Selected Collateral:', selectedCollateral);
-    console.log('Rough CDP ID:', enteredCdpId);
-
     if (enteredCdpId === null) {
-      console.log('Invalid CDP ID');
+      setLoading(false);
       return;
     }
 
+    const output: CdpInfo[] = [];
     const info = await getCdpInfo(enteredCdpId);
-    if (!info) {
-      console.log('Invalid CDP Info');
-      return;
+    if (info && bytesToString(info.ilk) === selectedCollateral) {
+      output.push(info);
     }
-    console.log('CDP Info:', info);
 
-    const ilk = bytesToString(info.ilk);
-    console.log('ILK:', ilk);
     let number = 1;
     let it = 1;
-    while (number<20) {
-        // sleep(100);
-        const new_info = await getCdpInfo(enteredCdpId + it);
-        if (new_info && bytesToString(new_info.ilk) === ilk) {
-            console.log('CDP Info:', new_info);
-            console.log('CDP ID:', enteredCdpId + it);
-            number++;
+    const limit = pLimit(5);
+    const requests = [];
+
+    while (number < 20) {
+      requests.push(limit(() => getCdpInfo(enteredCdpId + it)));
+      requests.push(limit(() => getCdpInfo(enteredCdpId - it)));
+
+      const results = await Promise.all(requests);
+
+      for (const result of results) {
+        if (result && bytesToString(result.ilk) === selectedCollateral) {
+          output.push(result);
+          number++;
         }
-        const new_info2 = await getCdpInfo(enteredCdpId - it);
-        if (new_info2 && bytesToString(new_info2.ilk) === ilk) {
-            console.log('CDP Info:', new_info2);
-            console.log('CDP ID:', enteredCdpId + it);
-            number++;
-        }
-        it++;
+      }
+
+      it += 2;
     }
+
+    setCdpResults(output);
+    setLoading(false);
   };
 
   return (
     <div className="home-container">
       <h1 className="title">Collateral Selector</h1>
       <form onSubmit={handleSubmit} className="form-container">
-        <label htmlFor="collateral-select" className="label">
-          Choose Collateral Type:
-        </label>
+        <label className="label">Choose Collateral Type:</label>
         <select
-          id="collateral-select"
           value={selectedCollateral}
           onChange={(e) => setSelectedCollateral(e.target.value)}
           className="select-input"
@@ -70,11 +71,8 @@ const Home: React.FC = () => {
           <option value="WSTETH-A">WSTETH-A</option>
         </select>
 
-        <label htmlFor="roughCdpId-input" className="label">
-          Enter Rough CDP ID:
-        </label>
+        <label className="label">Enter Rough CDP ID:</label>
         <input
-          id="roughCdpId-input"
           type="number"
           ref={roughCdpIdInputRef}
           className="number-input"
@@ -82,20 +80,23 @@ const Home: React.FC = () => {
           min="0"
         />
 
-        <button type="submit" className="submit-button">
-          Submit
+        <button type="submit" className="submit-button" disabled={loading}>
+          {loading ? 'Loading...' : 'Submit'}
         </button>
-
-        {roughCdpId !== null && (
-          <p className="submitted-roughCdpId">Submitted Rough CDP ID: {roughCdpId}</p>
-        )}
       </form>
+
+      {roughCdpId !== null && <p className="submitted-roughCdpId">Submitted Rough CDP ID: {roughCdpId}</p>}
+
+      <div className="results-container">
+        {cdpResults.map((cdp, index) => (
+          <div key={index} className="cdp-card">
+            <p><strong>CDP ID: </strong> {cdp.id}</p>
+          </div>
+        ))}
+      </div>
+
     </div>
   );
 };
 
 export default Home;
-
-// function sleep(num: number) {
-//     return new Promise(resolve => setTimeout(resolve, num));
-// }
