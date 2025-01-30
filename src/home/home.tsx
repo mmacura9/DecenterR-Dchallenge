@@ -1,9 +1,7 @@
 import React, { useState, useRef } from 'react';
 import './home.css';
-import { CdpInfo, getCdpInfo } from '../contractComunication/maker';
+import { CdpInfo, fetchAllCdpInfo, getCdpInfo } from '../contractComunication/maker';
 import { bytesToString } from '../utils/bytesToString';
-import { Buffer } from 'Buffer';
-import pLimit from 'p-limit';
 
 const Home: React.FC = () => {
   const [selectedCollateral, setSelectedCollateral] = useState<string>('ETH-A');
@@ -20,39 +18,44 @@ const Home: React.FC = () => {
     const enteredCdpId = roughCdpIdInputRef.current ? parseInt(roughCdpIdInputRef.current.value, 10) : null;
     setRoughCdpId(enteredCdpId);
 
-    if (enteredCdpId === null) {
+    if (enteredCdpId === null || isNaN(enteredCdpId)) {
       setLoading(false);
       return;
     }
 
-    const output: CdpInfo[] = [];
-    const info = await getCdpInfo(enteredCdpId);
-    if (info && bytesToString(info.ilk) === selectedCollateral) {
-      output.push(info);
-    }
+    try {
+      let number = 0;
 
-    let number = 1;
-    let it = 1;
-    const limit = pLimit(5);
-    const requests = [];
-
-    while (number < 20) {
-      requests.push(limit(() => getCdpInfo(enteredCdpId + it)));
-      requests.push(limit(() => getCdpInfo(enteredCdpId - it)));
-
-      const results = await Promise.all(requests);
-
-      for (const result of results) {
-        if (result && bytesToString(result.ilk) === selectedCollateral) {
-          output.push(result);
-          number++;
-        }
+      const info = await getCdpInfo(enteredCdpId);
+      if (info && bytesToString(info.ilk) === selectedCollateral) {
+        setCdpResults([info]); // Show immediately
+        number++;
       }
 
-      it += 2;
+      let iteration = 1;
+      while (number < 20) {
+        await new Promise((resolve) => setTimeout(resolve, 300)); // Prevent API throttling
+        const results = await fetchAllCdpInfo(enteredCdpId, iteration);
+
+        if (results.length === 0) break; // Stop fetching if no more results
+
+        results.forEach((result) => {
+          if (number >= 20) 
+            return;
+          if (result && bytesToString(result.ilk) === selectedCollateral) {
+            setCdpResults((prev) => [...prev, result]); // Append new results immediately
+            number++;
+          }
+        });
+
+        iteration++;
+        console.log(number);
+        if (number >= 20) break; // Stop if we have enough results
+      }
+    } catch (error) {
+      console.error("Error fetching CDP info:", error);
     }
 
-    setCdpResults(output);
     setLoading(false);
   };
 
@@ -88,13 +91,19 @@ const Home: React.FC = () => {
       {roughCdpId !== null && <p className="submitted-roughCdpId">Submitted Rough CDP ID: {roughCdpId}</p>}
 
       <div className="results-container">
-        {cdpResults.map((cdp, index) => (
-          <div key={index} className="cdp-card">
-            <p><strong>CDP ID: </strong> {cdp.id}</p>
-          </div>
-        ))}
+        {cdpResults.length > 0 ? (
+          cdpResults.map((cdp, index) => (
+            <div key={index} className="cdp-card">
+              <p><strong>CDP ID: </strong> {cdp.id}</p>
+              <p><strong>Owner: </strong> {cdp.owner}</p>
+              <p><strong>Collateral: </strong> {cdp.collateral}</p>
+              <p><strong>Debt: </strong> {cdp.debt}</p>
+            </div>
+          ))
+        ) : (
+          !loading && <p>No results found.</p>
+        )}
       </div>
-
     </div>
   );
 };

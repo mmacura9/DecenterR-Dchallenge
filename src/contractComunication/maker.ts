@@ -20,3 +20,19 @@ export const getCdpInfo = async (cdpId: number) : Promise<CdpInfo>=> {
 
     return result;
 }
+
+export const fetchAllCdpInfo = async (cdpId: number, offset: number) : Promise<CdpInfo[]> => {
+    let cdpIds = [cdpId + offset, cdpId - offset];
+    if (cdpId - offset < 0) {
+        cdpIds = [cdpId + offset];
+    }
+    const calls = cdpIds.map((cdpId) => getCdpInfo(cdpId)); // Create an array of Promises
+
+    try {
+        const results = await Promise.all(calls); // Batch the calls
+        return results;
+    } catch (error) {
+        console.error('Error:', error);
+        return [];
+    }
+}

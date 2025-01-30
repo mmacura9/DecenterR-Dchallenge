@@ -1,4 +1,4 @@
-import { Buffer } from 'Buffer';
+import { Buffer } from 'buffer';
 
 /**
  * @param hex {string}
