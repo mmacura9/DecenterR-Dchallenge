@@ -14,14 +14,14 @@ export interface CdpInfo {
     debt: number;
 }
 
-export const getCdpInfo = async (cdpId: number, rate: number) : Promise<CdpInfo>=> {
+export const getCdpInfo = async (cdpId: number) : Promise<CdpInfo>=> {
     const result = await contract.methods.getCdpInfo(cdpId).call() as CdpInfo;
     result.id = cdpId;
-    result.collateral = Number(result.collateral) / 10 ** 18;
-    result.debt = Number(result.debt)*rate / 10 ** 18;
-    
-
     return result;
+}
+
+export const calculateDebt = async (debt: number, rate: number) : Promise<number> => {
+    return Number(debt)*rate / 10 ** 18;
 }
 
 export const fetchAllCdpInfo = async (cdpId: number, offset: number, rate: number) : Promise<CdpInfo[]> => {
@@ -29,10 +29,15 @@ export const fetchAllCdpInfo = async (cdpId: number, offset: number, rate: numbe
     if (cdpId - offset < 0) {
         cdpIds = [cdpId + offset];
     }
-    const calls = cdpIds.map((cdpId) => getCdpInfo(cdpId, rate)); // Create an array of Promises
+    const calls = cdpIds.map((cdpId) => getCdpInfo(cdpId)); // Create an array of Promises
 
     try {
         const results = await Promise.all(calls); // Batch the calls
+        for (const result of results) {
+            result.debt = await calculateDebt(result.debt, rate);
+            result.collateral = Number(result.collateral) / 10 ** 18;
+
+        }
         return results;
     } catch (error) {
         console.error('Error:', error);

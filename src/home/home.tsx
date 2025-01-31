@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import './home.css';
-import { CdpInfo, fetchAllCdpInfo, getCdpInfo } from '../contractComunication/maker';
-import { bytesToString } from '../utils/bytesToString';
+import { calculateDebt, CdpInfo, fetchAllCdpInfo, getCdpInfo } from '../contractComunication/maker';
+import { bytesToString, stringToBytes } from '../utils/bytesToString';
 import { Line } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
 import { getIlkInfo } from '../contractComunication/ilks';
@@ -27,8 +27,9 @@ const Home: React.FC = () => {
     console.log('Entered CDP ID:', enteredCdpId);
     console.log('Selected Collateral:', selectedCollateral);
     setRoughCdpId(enteredCdpId);
+    const ilkBytes32 = stringToBytes(selectedCollateral);
 
-    const ilkInfo = await getIlkInfo(selectedCollateral);
+    const ilkInfo = await getIlkInfo(ilkBytes32);
     const rate = Number(ilkInfo.rate) / 10 ** 27;
 
     if (enteredCdpId === null || isNaN(enteredCdpId)) {
@@ -37,7 +38,9 @@ const Home: React.FC = () => {
     }
 
     try {
-      const info = await getCdpInfo(enteredCdpId, rate);
+      const info = await getCdpInfo(enteredCdpId);
+      info.collateral = Number(info.collateral) / 10 ** 18;
+      info.debt = await calculateDebt(Number(info.debt), rate);
       let number = 0;
 
       if (info && bytesToString(info.ilk) === selectedCollateral) {
