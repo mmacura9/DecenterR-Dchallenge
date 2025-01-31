@@ -4,6 +4,7 @@ import { CdpInfo, fetchAllCdpInfo, getCdpInfo } from '../contractComunication/ma
 import { bytesToString } from '../utils/bytesToString';
 import { Line } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
+import { getIlkInfo } from '../contractComunication/ilks';
 
 // Register required chart elements
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
@@ -27,13 +28,16 @@ const Home: React.FC = () => {
     console.log('Selected Collateral:', selectedCollateral);
     setRoughCdpId(enteredCdpId);
 
+    const ilkInfo = await getIlkInfo(selectedCollateral);
+    const rate = Number(ilkInfo.rate) / 10 ** 27;
+
     if (enteredCdpId === null || isNaN(enteredCdpId)) {
       setLoading(false);
       return;
     }
 
     try {
-      const info = await getCdpInfo(enteredCdpId);
+      const info = await getCdpInfo(enteredCdpId, rate);
       let number = 0;
 
       if (info && bytesToString(info.ilk) === selectedCollateral) {
@@ -47,7 +51,7 @@ const Home: React.FC = () => {
       let iteration = 1;
       while (number < 20) {
         await new Promise((resolve) => setTimeout(resolve, 300)); // Prevent API throttling
-        const results = await fetchAllCdpInfo(enteredCdpId, iteration);
+        const results = await fetchAllCdpInfo(enteredCdpId, iteration, rate);
 
         if (results.length === 0) {
           console.log('No more results found.');
@@ -61,7 +65,6 @@ const Home: React.FC = () => {
           if (result && bytesToString(result.ilk) === selectedCollateral) {
             number++;
             setCheckedCdpIds((prev) => [...prev, number]);
-
             setCdpResults((prev) => [...prev, result]);
           } else {
             setCheckedCdpIds((prev) => [...prev, number]);
@@ -172,8 +175,8 @@ const Home: React.FC = () => {
             <div key={index} className="cdp-card">
               <p><strong>CDP ID: </strong> {cdp.id}</p>
               <p><strong>Owner: </strong> {cdp.owner}</p>
-              <p><strong>Collateral: </strong> {cdp.collateral}</p>
-              <p><strong>Debt: </strong> {cdp.debt}</p>
+              <p><strong>Collateral: </strong> {cdp.collateral.toLocaleString('en-us', {minimumFractionDigits: 2})} {selectedCollateral}</p>
+              <p><strong>Debt: </strong> {cdp.debt.toLocaleString('en-us', {minimumFractionDigits: 2})} DAI</p>
             </div>
           ))
         ) : (

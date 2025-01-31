@@ -9,3 +9,12 @@ export function bytesToString(hex: string): string {
       .toString()
       .replace(/\x00/g, '');
   }
+
+/**
+ * @param str {string}
+ * @return {string} input encoded to hex, padded to 32 bytes
+ */
+export function stringToBytes(str: string): string {
+  let n = Buffer.from(str).toString('hex');while (n.length < 64) n = `${n}0`;
+  return `0x${n}`;
+}
