@@ -49,8 +49,10 @@ const Home: React.FC = () => {
         await new Promise((resolve) => setTimeout(resolve, 300)); // Prevent API throttling
         const results = await fetchAllCdpInfo(enteredCdpId, iteration);
 
-        if (results.length === 0) 
+        if (results.length === 0) {
+          console.log('No more results found.');
           continue;
+        }
 
         results.forEach((result) => {
           if (number >= 20) 
@@ -64,11 +66,10 @@ const Home: React.FC = () => {
           } else {
             setCheckedCdpIds((prev) => [...prev, number]);
           }
-          console.log("Number: ", number);
         });
 
         iteration++;
-        if (cdpResults.length >= 20) break; // Stop if we have enough results
+        if (number >= 20) break; // Stop if we have enough results
       }
     } catch (error) {
       console.error("Error fetching CDP info:", error);
@@ -87,6 +88,8 @@ const Home: React.FC = () => {
         fill: false,
         backgroundColor: 'rgb(75, 192, 192)',
         borderColor: 'rgba(75, 192, 192, 0.2)',
+        min: 0,
+        max: 20,
       },
     ],
   };
