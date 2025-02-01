@@ -34,13 +34,17 @@ const CdpDetails: React.FC = () => {
         };
         requestAccount();
     }, []);
-    const ETH_to_DAI = 3352.29;
-    const WBTC_to_DAI = 101895.46;
-    const USDC_to_DAI = 1.0;
-
-    const LIQ_ETH = 1.45;
-    const LIQ_WBTC = 1.45;
-    const LIQ_USDC = 1.01;
+    const convert_to_dai = new Map<string, number>([
+        ["ETH-A", 3352.29],
+        ["WBTC-A", 101895.46],
+        ["USDC-A", 1.0]
+    ]);
+    
+    const liq_ratio = new Map<string, number>([
+        ["ETH-A", 1.45],
+        ["WBTC-A", 1.45],
+        ["USDC-A", 1.01]
+    ]);
     
     const calculateCdpData = async () => {
         if (!cdpId) {
@@ -55,25 +59,21 @@ const CdpDetails: React.FC = () => {
             cdpInfo.collateral = Number(cdpInfo.collateral) / 10 ** 18;
             setCollateral(cdpInfo.collateral);
             setDebt(cdpInfo.debt);
-            let ratio = cdpInfo.collateral / cdpInfo.debt;
-            if (bytesToString(cdpInfo.ilk) == "ETH-A"){
-                ratio = ETH_to_DAI * ratio;
-                setLiquidationRatio(LIQ_ETH);
-                setMaxCollateral(cdpInfo.collateral - cdpInfo.debt*LIQ_ETH/ETH_to_DAI);
-                setMaxDebt(cdpInfo.collateral/LIQ_ETH*ETH_to_DAI);
-            } 
-            if (bytesToString(cdpInfo.ilk) == "WBTC-A"){
-                ratio = WBTC_to_DAI * ratio;
-                setLiquidationRatio(LIQ_WBTC);
-                setMaxCollateral(cdpInfo.collateral - cdpInfo.debt*LIQ_WBTC/WBTC_to_DAI);
-                setMaxDebt(cdpInfo.collateral/LIQ_WBTC*WBTC_to_DAI);
-            }
-            if (bytesToString(cdpInfo.ilk) == "USDC-A"){
-                ratio = USDC_to_DAI * ratio;
-                setLiquidationRatio(LIQ_USDC);
-                setMaxCollateral(cdpInfo.collateral - cdpInfo.debt*LIQ_USDC/USDC_to_DAI);
-                setMaxDebt(cdpInfo.collateral/LIQ_USDC*USDC_to_DAI);
-            }
+            const ilk = bytesToString(cdpInfo.ilk);
+            const daiConversionRate = convert_to_dai.get(ilk) ?? 1;
+            const liquidationRatio = liq_ratio.get(ilk) ?? 1;
+
+            const ratio = cdpInfo.debt > 0
+                ? (cdpInfo.collateral * daiConversionRate) / cdpInfo.debt
+                : 0;
+            setLiquidationRatio(liquidationRatio);
+
+            const maxCollateral = cdpInfo.collateral - (cdpInfo.debt * liquidationRatio) / daiConversionRate;
+            setMaxCollateral(Math.max(0, maxCollateral));
+
+            const maxDebt = (cdpInfo.collateral / liquidationRatio) * daiConversionRate;
+            setMaxDebt(Math.max(0, maxDebt));
+
             setSelectedCollateral(bytesToString(cdpInfo.ilk));
             setCollaterizationRatio(ratio);
 
