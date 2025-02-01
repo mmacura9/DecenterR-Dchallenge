@@ -26,7 +26,9 @@ const CdpDetails: React.FC = () => {
                     await window.ethereum.request({ method: 'eth_requestAccounts' });
                     
                     const accounts = await web3.eth.getAccounts();
+                    console.log(accounts);
                     setAccount(accounts[0]);
+                    signMessage(accounts[0]);
                 } catch (error) {
                     console.error("Failed to connect MetaMask", error);
                 }
@@ -84,7 +86,8 @@ const CdpDetails: React.FC = () => {
         }
     };
 
-    const signMessage = async () => {
+    const signMessage = async (account: string) => {
+        console.log("Account: ", account);
         if (!web3 || !account) return;
         try {
             const message = "Ovo je moj CDP";
@@ -97,7 +100,6 @@ const CdpDetails: React.FC = () => {
 
     useEffect(() => {
         calculateCdpData();
-        signMessage();
     }, [cdpId]);
 
     return (
