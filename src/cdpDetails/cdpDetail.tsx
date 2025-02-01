@@ -17,7 +17,23 @@ const CdpDetails: React.FC = () => {
     const [maxDebt, setMaxDebt] = useState<number>(0);
     const [selectedCollateral, setSelectedCollateral] = useState<string>('ETH-A');
     const [signature, setSignature] = useState<string>('');
+    const [account, setAccount] = useState<string>('');
 
+    useEffect(() => {
+        const requestAccount = async () => {
+            if (window.ethereum) {
+                try {
+                    await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    
+                    const accounts = await web3.eth.getAccounts();
+                    setAccount(accounts[0]);
+                } catch (error) {
+                    console.error("Failed to connect MetaMask", error);
+                }
+            }
+        };
+        requestAccount();
+    }, []);
     const ETH_to_DAI = 3352.29;
     const WBTC_to_DAI = 101895.46;
     const USDC_to_DAI = 1.0;
@@ -69,19 +85,7 @@ const CdpDetails: React.FC = () => {
     };
 
     const signMessage = async () => {
-        if (!web3) return;
-
-        let accounts = await web3.eth.getAccounts();
-        if (!accounts || accounts.length === 0) {
-            await window.ethereum.request({ method: 'eth_requestAccounts' });
-            accounts = await web3.eth.getAccounts();
-            if (!accounts || accounts.length === 0) {
-                console.error("No accounts found");
-                return;
-            }
-        }
-        const account = accounts[0];
-
+        if (!web3 || !account) return;
         try {
             const message = "Ovo je moj CDP";
             const signedMessage = await web3.eth.personal.sign(message, account, '');
