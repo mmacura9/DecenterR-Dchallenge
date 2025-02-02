@@ -175,12 +175,14 @@ const Home: React.FC = () => {
       <div className="results-container">
         {cdpResults.length > 0 ? (
           cdpResults.map((cdp, index) => (
-            <div key={index} className="cdp-card">
-              <p><strong>CDP ID: </strong> {cdp.id}</p>
-              <p><strong>Owner: </strong> {cdp.owner}</p>
-              <p><strong>Collateral: </strong> {cdp.collateral.toLocaleString('en-us', {minimumFractionDigits: 2})} {selectedCollateral}</p>
-              <p><strong>Debt: </strong> {cdp.debt.toLocaleString('en-us', {minimumFractionDigits: 2})} DAI</p>
-            </div>
+            <a href={`/cdp/${cdp.id}`}>
+              <div key={index} className="cdp-card">
+                <p><strong>CDP ID: </strong> {cdp.id}</p>
+                <p><strong>Owner: </strong> {cdp.owner}</p>
+                <p><strong>Collateral: </strong> {cdp.collateral.toLocaleString('en-us', {minimumFractionDigits: 2})} {selectedCollateral}</p>
+                <p><strong>Debt: </strong> {cdp.debt.toLocaleString('en-us', {minimumFractionDigits: 2})} DAI</p>
+              </div>
+            </a>
           ))
         ) : (
           !loading && <p>No results found.</p>

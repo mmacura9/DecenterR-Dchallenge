@@ -120,6 +120,11 @@ body {
   margin: 0.5rem 0;
   font-size: 0.9rem;
   word-break: break-word;
+  color: #fff;
+}
+
+a {
+  text-decoration: none;
 }
 
 /* Scrollbar styling */
