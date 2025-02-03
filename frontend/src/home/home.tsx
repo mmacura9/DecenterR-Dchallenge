@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import './home.css';
 import { calculateDebt, CdpInfo, fetchAllCdpInfo, getCdpInfo } from '../contractComunication/maker';
 import { bytesToString, stringToBytes } from '../utils/bytesToString';
@@ -17,14 +17,42 @@ const Home: React.FC = () => {
   const [checkedCdpIds, setCheckedCdpIds] = useState<number[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const roughCdpIdInputRef = useRef<HTMLInputElement>(null);
+  const [debouncedCdpId, setDebouncedCdpId] = useState<number | null>(null);
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
+  const fetchControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedCdpId(roughCdpId);
+    }, 300);
+
+    return () => clearTimeout(handler);
+  }, [roughCdpId, selectedCollateral]);
+
+  useEffect(() => {
+    if (debouncedCdpId !== null) {
+      fetchCdpInfo(debouncedCdpId);
+    }
+  }, [debouncedCdpId]);
+
+  const fetchCdpInfo = async (enteredCdpId: number) => {
     setCdpResults([]);
     setCheckedCdpIds([]);
     setLoading(true);
 
-    const enteredCdpId = roughCdpIdInputRef.current ? parseInt(roughCdpIdInputRef.current.value, 10) : null;
+    if (isNaN(enteredCdpId)) {
+      setLoading(false);
+      return;
+    }
+
+    if (fetchControllerRef.current) {
+      fetchControllerRef.current.abort();
+    }
+  
+    // Create a new AbortController
+    const controller = new AbortController();
+    fetchControllerRef.current = controller;
+
     console.log('Entered CDP ID:', enteredCdpId);
     console.log('Selected Collateral:', selectedCollateral);
     setRoughCdpId(enteredCdpId);
@@ -40,23 +68,12 @@ const Home: React.FC = () => {
 
     try {
       const queue = new Queue<number>();
-
-      const info = await getCdpInfo(enteredCdpId);
-      info.collateral = Number(info.collateral) / 10 ** 18;
-      info.debt = await calculateDebt(Number(info.debt), rate);
       let number = 0;
 
-      if (info && bytesToString(info.ilk) === selectedCollateral) {
-        setCdpResults([info]);
-        number++;
-        setCheckedCdpIds([number]);
-      } else {
-        setCheckedCdpIds([number]);
-      }
-
-      let next_lower = enteredCdpId - 1;
+      let next_lower = enteredCdpId;
       let next_higher = enteredCdpId + 1;
       while (number < 20) {
+        if (controller.signal.aborted) return;
         if (next_higher - enteredCdpId === enteredCdpId - next_lower) {
           for (let i = 0; i < 3; i++) {
             queue.enqueue(next_higher++);
@@ -79,13 +96,11 @@ const Home: React.FC = () => {
         results.forEach((result) => {
           if (number >= 20) 
             return;
-
+          setCheckedCdpIds((prev) => [...prev, number]);
+          
           if (result && bytesToString(result.ilk) === selectedCollateral) {
             number++;
-            setCheckedCdpIds((prev) => [...prev, number]);
             setCdpResults((prev) => [...prev, result]);
-          } else {
-            setCheckedCdpIds((prev) => [...prev, number]);
           }
         });
 
@@ -117,7 +132,7 @@ const Home: React.FC = () => {
   return (
     <div className="home-container">
       <h1 className="title">Collateral Selector</h1>
-      <form onSubmit={handleSubmit} className="form-container">
+      <form className="form-container">
         <label className="label">Choose Collateral Type:</label>
         <select
           value={selectedCollateral}
@@ -177,11 +192,8 @@ const Home: React.FC = () => {
           className="number-input"
           placeholder="0"
           min="0"
+          onChange={(e) => setRoughCdpId(parseInt(e.target.value, 10) || null)}
         />
-
-        <button type="submit" className="submit-button" disabled={loading}>
-          {loading ? 'Loading...' : 'Submit'}
-        </button>
       </form>
 
       {roughCdpId !== null && <p className="submitted-roughCdpId">Submitted Rough CDP ID: {roughCdpId}</p>}
