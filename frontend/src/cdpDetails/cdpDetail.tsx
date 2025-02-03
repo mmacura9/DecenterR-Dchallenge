@@ -73,7 +73,7 @@ const CdpDetails: React.FC = () => {
             const maxCollateral = cdpInfo.collateral - (cdpInfo.debt * liquidationRatio) / daiConversionRate;
             setMaxCollateral(Math.max(0, maxCollateral));
 
-            const maxDebt = (cdpInfo.collateral / liquidationRatio) * daiConversionRate;
+            const maxDebt = (cdpInfo.collateral / liquidationRatio) * daiConversionRate / rate;
             setMaxDebt(Math.max(0, maxDebt));
 
             setSelectedCollateral(bytesToString(cdpInfo.ilk));
