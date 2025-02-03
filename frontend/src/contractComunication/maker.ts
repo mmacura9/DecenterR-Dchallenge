@@ -1,3 +1,4 @@
+import { Queue } from '@datastructures-js/queue';
 import { makerABI } from "../contractABI/makerDAO";
 import { web3 } from '../utils/web3';
 
@@ -24,11 +25,21 @@ export const calculateDebt = async (debt: number, rate: number) : Promise<number
     return Number(debt)*rate / 10 ** 18;
 }
 
-export const fetchAllCdpInfo = async (cdpId: number, offset: number, rate: number) : Promise<CdpInfo[]> => {
-    let cdpIds = [cdpId + offset, cdpId - offset];
-    if (cdpId - offset < 0) {
-        cdpIds = [cdpId + offset];
+export const fetchAllCdpInfo = async (cdpId: number, queue: Queue<number>, rate: number) : Promise<CdpInfo[]> => {
+    let cdpIds = [];
+
+    for (let i = 0; i < 5; i++) {
+        if (queue.isEmpty()) {
+            break;
+        }
+        if (queue.front() < 0) {
+            queue.dequeue();
+            i--;
+            continue;
+        }
+        cdpIds.push(queue.dequeue());
     }
+    
     const calls = cdpIds.map((cdpId) => getCdpInfo(cdpId)); // Create an array of Promises
 
     try {
@@ -36,7 +47,6 @@ export const fetchAllCdpInfo = async (cdpId: number, offset: number, rate: numbe
         for (const result of results) {
             result.debt = await calculateDebt(result.debt, rate);
             result.collateral = Number(result.collateral) / 10 ** 18;
-
         }
         return results;
     } catch (error) {

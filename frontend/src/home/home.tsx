@@ -5,6 +5,7 @@ import { bytesToString, stringToBytes } from '../utils/bytesToString';
 import { Line } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
 import { getIlkInfo } from '../contractComunication/ilks';
+import { Queue } from '@datastructures-js/queue';
 
 // Register required chart elements
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
@@ -38,6 +39,8 @@ const Home: React.FC = () => {
     }
 
     try {
+      const queue = new Queue<number>();
+
       const info = await getCdpInfo(enteredCdpId);
       info.collateral = Number(info.collateral) / 10 ** 18;
       info.debt = await calculateDebt(Number(info.debt), rate);
@@ -51,10 +54,22 @@ const Home: React.FC = () => {
         setCheckedCdpIds([number]);
       }
 
-      let iteration = 1;
+      let next_lower = enteredCdpId - 1;
+      let next_higher = enteredCdpId + 1;
       while (number < 20) {
+        if (next_higher - enteredCdpId === enteredCdpId - next_lower) {
+          for (let i = 0; i < 3; i++) {
+            queue.enqueue(next_higher++);
+            if (i < 2) queue.enqueue(next_lower--);
+          }
+        } else {
+          for (let i = 0; i < 3; i++) {
+            queue.enqueue(next_lower--);
+            if (i < 2) queue.enqueue(next_higher++);
+          }
+        }
         await new Promise((resolve) => setTimeout(resolve, 300)); // Prevent API throttling
-        const results = await fetchAllCdpInfo(enteredCdpId, iteration, rate);
+        const results = await fetchAllCdpInfo(enteredCdpId, queue, rate);
 
         if (results.length === 0) {
           console.log('No more results found.');
@@ -74,7 +89,6 @@ const Home: React.FC = () => {
           }
         });
 
-        iteration++;
         if (number >= 20) break; // Stop if we have enough results
       }
     } catch (error) {
