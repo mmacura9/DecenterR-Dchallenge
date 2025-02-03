@@ -19,6 +19,7 @@ const Home: React.FC = () => {
   const roughCdpIdInputRef = useRef<HTMLInputElement>(null);
   const [debouncedCdpId, setDebouncedCdpId] = useState<number | null>(null);
 
+
   const fetchControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -27,7 +28,7 @@ const Home: React.FC = () => {
     }, 300);
 
     return () => clearTimeout(handler);
-  }, [roughCdpId, selectedCollateral]);
+  }, [roughCdpId]);
 
   useEffect(() => {
     if (debouncedCdpId !== null) {
@@ -103,8 +104,6 @@ const Home: React.FC = () => {
             setCdpResults((prev) => [...prev, result]);
           }
         });
-
-        if (number >= 20) break; // Stop if we have enough results
       }
     } catch (error) {
       console.error("Error fetching CDP info:", error);
