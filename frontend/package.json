@@ -10,7 +10,6 @@
     "@types/node": "^16.7.13",
     "@types/react": "^18.0.0",
     "@types/react-dom": "^18.0.0",
-    "buffer": "^6.0.3",
     "Buffer": "npm:buffer@^6.0.3",
     "chart.js": "^4.4.7",
     "p-limit": "^6.2.0",
